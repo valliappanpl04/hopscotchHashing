@@ -1,21 +1,27 @@
 #include<stdio.h>   
 #include<stdlib.h>
 #include<string.h>
+
+
 #define H 4
 #define noOfSegments x
 #define segmentSize y
 #define datasize z
-int x=10,y=5000, z=50000;
+int x=1,y=10, z=10;
+
+
 typedef struct hashtable{
     int key;
-    char *val;
+    void *val;
+    int hopinfo;
     int flag;
 }table;
+
 int contains(table**, int);
 void delete(table***, int);
 void deleteall(table***);
 table** resize(table***);
-int add(table***, int, char*);
+int add(table***, int, void*);
 void print(table**);
 char* get(table**, int);
 
@@ -23,6 +29,7 @@ char* get(table**, int);
 // int hashfunction -> for creating hashvalue
 int hashfunction(int key){
     return (((key*13)/3)*7)/2;
+    // return key-(key%2);
     // return 0;
 }
 
@@ -32,9 +39,11 @@ int contains(table **arr, int key){
     int seg=hash%noOfSegments;
     int buck=hash%segmentSize;
     for(int i=0;i<H;i++){
-        int index=(buck+i)%segmentSize;
-        if(arr[seg][index].flag==1 && arr[seg][index].key==key)
-            return 1;
+        if((arr[seg][buck].hopinfo>>i)&1==1){
+            int index=(buck+i)%segmentSize;
+            if(arr[seg][index].flag==1 && arr[seg][index].key==key)
+                return 1;
+        }
     }
     return 0;
 }
@@ -109,7 +118,7 @@ void deleteall(table ***arr){
 // void resize -> to resize(double) the table size and rehash the entries
 table** resize(table ***arr){
     y*=2;
-    volatile table **temp=(table**)calloc(noOfSegments, sizeof(table*));
+    table **temp=(table**)calloc(noOfSegments, sizeof(table*));
     for(int i=0;i<noOfSegments;i++){
         temp[i]=(table*)calloc(segmentSize, sizeof(table));
     }
@@ -165,7 +174,7 @@ table** resize(table ***arr){
 }
 
 // adding element to the table
-int add(table ***arr, int key, char *val){
+int add(table ***arr, int key, void *val){
     if(contains((*arr), key))
         return 0;
     int hash=hashfunction(key);
@@ -182,23 +191,29 @@ int add(table ***arr, int key, char *val){
         return 0;
     int index=hop+bucket;
     while(1){
-        if(hash+H-1-index>=0){
+        if(bucket+H-1-index>=0){
             (*arr)[segment][index%segmentSize].key=key;
             (*arr)[segment][index%segmentSize].flag=1;
-            (*arr)[segment][index%segmentSize].val=(char*)malloc(sizeof(char)*10000);
-            strcpy((*arr)[segment][index%segmentSize].val, val);
+            // (*arr)[segment][index%segmentSize].val=(char*)malloc(sizeof(char)*10000);
+            (*arr)[segment][index%segmentSize].val=val;
+            (*arr)[segment][bucket].hopinfo|=(1<<hop);
+            // strcpy((*arr)[segment][index%segmentSize].val, val);
             return 1;
         }
         int step=1;
         while(step<H){
             int xindex=(index-H+step+segmentSize)%segmentSize;
             int xhash=hashfunction((*arr)[segment][xindex].key)%segmentSize;
-            if(xhash+H-1-index>=0){
+            int xbuck=xhash%segmentSize,xseg=xhash%noOfSegments;
+            if(xbuck+H-1-index>=0){
                 (*arr)[segment][index%segmentSize].key=(*arr)[segment][xindex].key;
-                (*arr)[segment][index%segmentSize].val=(char*)malloc(sizeof(char)*10000);
-                strcpy((*arr)[segment][index%segmentSize].val,(*arr)[segment][xindex].val);
+                // (*arr)[segment][index%segmentSize].val=(char*)malloc(sizeof(char)*10000);
+                (*arr)[segment][index%segmentSize].val=(*arr)[segment][xindex].val;
+                (*arr)[xseg][xbuck].hopinfo|=(1<<(index-xbuck));
+                (*arr)[xseg][xbuck].hopinfo&=~(1<<(xindex-xbuck));
+                // strcpy((*arr)[segment][index%segmentSize].val,(*arr)[segment][xindex].val);
                 free((*arr)[segment][xindex].val);
-                (*arr)[segment][xindex].val=NULL;
+                // (*arr)[segment][xindex].val=NULL;
                 (*arr)[segment][index%segmentSize].flag=1;
                 (*arr)[segment][xindex].flag=0;
                 index=xindex;
@@ -223,6 +238,12 @@ void print(table **arr){
         printf("\n");
     }
     printf("\n\n");
+    for(int i=0;i<noOfSegments;i++){
+        for(int j=0;j<segmentSize;j++){
+            printf("%d ",arr[i][j].hopinfo);
+        }
+        printf("\n");
+    }
 }
 
 
@@ -241,11 +262,23 @@ char* get(table **arr, int key){
     }
 }
 
+int wordlen=1, ascii=97;
+char* generatestr(){
+    char* str=(char*)malloc(sizeof(char)*1000);
+    for(int i=0;i<wordlen;i++){
+        str[i]=ascii++;
+        if(ascii==122)
+            ascii=97;
+    }
+    wordlen++;
+    if(wordlen==100)
+        wordlen=1;
+        return str;
+}
 
 int main(){
     printf("\n");
-    int wordlen=1, ascii=97;
-    volatile table **arr=(table**)calloc(noOfSegments,sizeof(table*));
+    table **arr=(table**)calloc(noOfSegments,sizeof(table*));
     for(int i=0;i<noOfSegments;i++){
         arr[i]=(table*)calloc(segmentSize,sizeof(table));
     }
@@ -254,24 +287,13 @@ int main(){
         for(int j=0;j<segmentSize;j++)
             arr[i][j].flag=0;
     for(int i=0;i<datasize;i++){
-        // generating word
-        char str[100];
-        for(int i=0;i<wordlen;i++){
-            str[i]=ascii++;
-            if(ascii==122)
-                ascii=97;
-        }
-        wordlen++;
-        if(wordlen==100)
-            wordlen=1;
-        // generating word
-
-        if(!add(&arr, i, str));
+        if(!add(&arr, i, generatestr()));
             // failed[k++]=i;
     }
+    print(arr);
     printf("\n");
     arr=resize(&arr);
-    // print(arr);
-    deleteall(&arr);
-
+    print(arr);
+    // deleteall(&arr);
+    
 }
