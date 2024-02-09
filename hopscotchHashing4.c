@@ -101,7 +101,7 @@ void deleteall(table ***arr){
 // }
 table** resize(table ***arr){
     y*=2;
-    table **temp=(table**)calloc(noOfSegments, sizeof(table*));
+    volatile table **temp=(table**)calloc(noOfSegments, sizeof(table*));
     for(int i=0;i<noOfSegments;i++){
         temp[i]=(table*)calloc(segmentSize, sizeof(table));
     }
@@ -247,7 +247,7 @@ int main(){
     printf("\n");
     int wordlen=1, ascii=97;
     // table arr[noOfSegments][segmentSize];
-    table **arr=(table**)calloc(noOfSegments,sizeof(table*));
+    volatile table **arr=(table**)calloc(noOfSegments,sizeof(table*));
     for(int i=0;i<noOfSegments;i++){
         arr[i]=(table*)calloc(segmentSize,sizeof(table));
     }
