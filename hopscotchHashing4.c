@@ -275,7 +275,7 @@ int main(){
     // add(&arr, 2, "hi");
     printf("%d",segmentSize);
     // print(arr);
-
+    printf("");
     printf("\n");
 
 }
