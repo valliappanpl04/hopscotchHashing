@@ -2,14 +2,15 @@
 #include<stdlib.h>
 #include<string.h>
 #include<time.h>
-
+int *loadfactor=NULL;
 // define constants
+int segmentsizefail=0, Hsizefail=0;
 #define H 32
 #define noOfSegments x
 #define segmentSize y
 #define dataSize z
+// int x=1, y=100, z=100;
 int x=10, y=1000, z=10000;
-// int x=10, y=1000, z=10000;
 
 // structure for bucket
 typedef struct hashtable{
@@ -26,9 +27,9 @@ table** resize(table***);
 // to generate hashvalue
 int hashfunction(int key){
     // return (key*123435)/6;
-    return (((key*15)/4)*7);
+    return (((key*15)/4)*7)/2;
     // return key%5;
-    return key;
+    // return key;
     // return ((key*key));
 }
 
@@ -42,6 +43,7 @@ void deletetable(table*** arr){
 
 // to initialize the table
 table** initializeTable(){
+    loadfactor=(int*)calloc(noOfSegments,sizeof(int));
     table** arr=(table**)malloc(sizeof(table*)*noOfSegments);
     for(int i=0;i<noOfSegments;i++){
         arr[i]=(table*)malloc(sizeof(table)*segmentSize);
@@ -56,8 +58,9 @@ int contains(table** arr, int key){
     int hash=hashfunction(key);
     int seg=hash%noOfSegments;
     int buck=hash%segmentSize;
+    int hopinfo=(arr[seg][buck].hopinfo>>1);
     for(int i=0;i<H;i++){
-        if((arr[seg][buck].hopinfo>>i)&1==1){
+        if(hopinfo&1==1){
             int index=buck+i;
             if(arr[seg][index].key==key)
                 return 1;
@@ -79,17 +82,22 @@ int add(table*** arr, int key, void *val){
         hop++;
     }
     if(i==segmentSize){
-        (*arr)=resize(arr);
-        free(val);
+        // (*arr)=resize(arr);
+        segmentsizefail++;
+        printf("Load factor : %d\n",loadfactor[seg]);
         return 0;
     }
-    int index=(hop+buck);
+    int index=(hop+buck)%segmentSize;
+    
     while(1){
+        if(index<buck)
+            index+=segmentSize;
         if((buck+H-1-index)>=0){
             (*arr)[seg][index%segmentSize].flag=1;
             (*arr)[seg][index%segmentSize].key=key;
             (*arr)[seg][index%segmentSize].val=val;
             (*arr)[seg][buck].hopinfo|=(1<<(index-buck));
+            loadfactor[seg]++;
             return 1;
         }
         int step=1;
@@ -98,6 +106,8 @@ int add(table*** arr, int key, void *val){
             int xhash=hashfunction((*arr)[seg][xindex].key);
             int xseg=xhash%noOfSegments;
             int xbuck=xhash%segmentSize;
+            if(index<xbuck)
+                index+=segmentSize;
             if((xbuck+H-1-index)>=0){
                 (*arr)[seg][index%segmentSize].flag=1;
                 (*arr)[seg][index%segmentSize].val=(*arr)[seg][xindex].val;
@@ -114,8 +124,9 @@ int add(table*** arr, int key, void *val){
             step++;
         }
         if(step==H){
-            free(val);
-            return 0;
+            printf("load factor : %d\n",loadfactor[seg]);
+            Hsizefail++;
+            return -1;
         }
     }
 }
@@ -126,7 +137,8 @@ table** resize(table ***arr){
     table** temp=initializeTable();
     for(int i=0;i<noOfSegments;i++){
         for(int j=0;j<segmentSize/2;j++){
-            add(&temp, (*arr)[i][j].key, (*arr)[i][j].val);
+            if((*arr)[i][j].flag==1)
+                add(&temp, (*arr)[i][j].key, (*arr)[i][j].val);
         }
     }
     y/=2;
@@ -190,35 +202,54 @@ int containselement(table** arr, int key, void *val){
     int hash=hashfunction(key);
     int seg=hash%noOfSegments;
     int buck=hash%segmentSize;
+    int flag1=0,flag2=0;
+    int seg1,seg2,index1,index2;
+    seg1=seg;
+    index1=buck;
     for(int i=0;i<H;i++){
-        int index=buck+i;
+        int index=(buck+i)%segmentSize;
         if((arr[seg][buck].hopinfo>>i)&1==1 && arr[seg][index].val==val){
             return 1;
         }
     }
     return 0;
 }
+
 int main(){
     table** arr=initializeTable();
-    int k=0,cnt=0;
+    int k=0,cnt=0,l=0;
     char** wordarr=(char**)malloc(sizeof(char*)*dataSize);
     for(int i=0;i<dataSize;i++){
         wordarr[i]=generateStr2();
-        if(!add(&arr, i, wordarr[i]))
-            // failed[k++]=i;
+        int success =add(&arr, i, wordarr[i]);
+        if(success!=1){
             k++;
+            if(success==0){
+                l++;
+                arr=resize(&arr);
+                add(&arr, i, wordarr[i]);
+            }
+        }
     }
     for(int i=0;i<dataSize;i++){
-        // if(!containselement(arr, i, wordarr[i])){
-        //     cnt++;
-        // }
-        if(!containselement(arr, i, wordarr[i]))
+        if(!containselement(arr, i, wordarr[i])){
             cnt++;
+        }
     }
-    printf("failed to add : %d\n",k);
+    printf("failed to add : %d\n",k-l);
     printf("Elements not present : %d\n",cnt);
+    printf("No of resizes : %d\n",l);
+    printf("%d %d\n",segmentsizefail, Hsizefail);
+    int cnt2=0;
+    for(int i=0;i<dataSize;i++){
+        if(!containselement(arr, i, wordarr[i])){
+            cnt2++;
+        }
+    }
+    printf("Elements not present after resizing : %d\n",cnt2);
+
+
     free(wordarr);
-    // arr=resize(&arr);
     deleteall(&arr);
     deletetable(&arr);
 }
