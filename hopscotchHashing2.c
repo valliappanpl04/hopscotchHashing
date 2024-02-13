@@ -90,6 +90,7 @@ void delete(table arr[noOfSegments][segmentSize], int val){
         }
     }
 }
+// int containselement()
 void deleteall(table arr[noOfSegments][segmentSize]){
     for(int i=0;i<noOfSegments;i++){
         for(int j=0;j<segmentSize;j++){

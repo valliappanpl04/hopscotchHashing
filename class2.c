@@ -137,7 +137,7 @@ void sort(void ***vect, int size, int (*compare)(void*, void*)){
         }
     }
 }
-// fucntions for int
+// functions for int
 int getInt(void **vect, int index){
     return (int*)vect[index];
 }
@@ -197,7 +197,7 @@ int main(){
     int size=0;
 
     in *obj=initializeWithInt();
-    int n=100000000;
+    int n=10000000000;
     printf("size before adding  : %d\n", size);
     for(int i=0;i<n;i++){
         obj->add(&vect, &size, i);

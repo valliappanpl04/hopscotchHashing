@@ -58,9 +58,9 @@ int contains(table** arr, int key){
     int hash=hashfunction(key);
     int seg=hash%noOfSegments;
     int buck=hash%segmentSize;
-    int hopinfo=(arr[seg][buck].hopinfo>>1);
-    for(int i=0;i<H;i++){
-        if(hopinfo&1==1){
+    int hopinfo=(arr[seg][buck].hopinfo),mask=1;
+    for(int i=0;i<H;i++,mask<<=1){
+        if(hopinfo&mask==1){
             int index=buck+i;
             if(arr[seg][index].key==key)
                 return 1;
@@ -252,4 +252,4 @@ int main(){
     free(wordarr);
     deleteall(&arr);
     deletetable(&arr);
-}
+} 
