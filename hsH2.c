@@ -7,7 +7,11 @@
 #define noofSegments x
 #define segmentSize y
 #define datasize z
-int x=10,y=50000,z=5000000,cnt=0;
+#define upperLimit 10000000
+#define lowerLimit 1000
+int x=10,y=5000,z=50000,cnt=0;
+// int x=1,y=10,z=10;
+// int x=3, y=10, z=10;
 
 int* loadfactor=NULL;
 
@@ -41,18 +45,19 @@ void deleteTable(table*** arr){
 
 // returns a hashvalue for the given key
 int hashfunction(int key){
-    return key;
-    // return (((key*15)/4)*7)/2;
+    // return key;
+    return (((key*15)/4)*7)/2;
     return 9;
 }
 
 // generates a random string
 char* generateStr(){
-    static int mySeed = 25011984;
+    // static int mySeed = 25011984;
     char *string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-#'?!";
     int stringLen = strlen(string);        
     char *randomString = malloc(sizeof(char) * (11));
-    srand(time(NULL) * 10 + ++mySeed);
+    // srand(time(NULL) * 10 + ++mySeed);
+    // srand(time(0));
     if (randomString) {
         short key = 0;
         for (int n = 0;n < 10;n++) {            
@@ -62,6 +67,12 @@ char* generateStr(){
         randomString[10] = '\0';
         return randomString;        
     }
+}
+
+// generates a random number within a range
+int generateInt(){
+    // srand(time(0));
+    return (rand()%(upperLimit-lowerLimit))+lowerLimit;
 }
 
 // adds element to the table
@@ -116,8 +127,8 @@ int add(table ***arr, int key, void *val){
                 (*arr)[s][b].val=NULL;
                 (*arr)[s][b].key=0;
 
-                (*arr)[xseg][xbuck].hop_info&=~((xindex-xcur_pos)<<1);
-                (*arr)[xseg][xbuck].hop_info|=((free_index-xcur_pos)<<1);
+                (*arr)[xseg][xbuck].hop_info&=~(1<<(xindex-xcur_pos));
+                (*arr)[xseg][xbuck].hop_info|=(1<<(free_index-xcur_pos));
 
                 free_index=xindex;
                 break;
@@ -131,7 +142,7 @@ int add(table ***arr, int key, void *val){
                     return 0;
                 }
             }
-            cnt++;
+            // cnt++;
             return -1;
             // return 0;
         }
@@ -159,13 +170,13 @@ void print(table **arr){
     for(int i=0;i<noofSegments;i++){
         for(int j=0;j<segmentSize;j++){
             if(arr[i][j].flag==1)
-                printf("%d:%s  ",j,arr[i][j].key, arr[i][j].val);
+                printf("%d:%s  ",arr[i][j].key, arr[i][j].val);
             else    
                 printf(" -:-  ");
         }
         printf("\n");
     }
-    printf("\n\n\n");
+    printf("\n");
 }
 
 void deleteall(table** arr){
@@ -185,8 +196,8 @@ int contains(table** arr, int key){
     int hopinfo=arr[seg][buck].hop_info;
     int mask=1;
     for(int i=0;i<H;i++,mask<<=1){
-        if(hopinfo&mask==mask){
-            int s=seg+((buck+i)/segmentSize),b=(buck+i)%segmentSize;
+        if((hopinfo>>i)&1==1){
+            int s=(seg+((buck+i)/segmentSize))%noofSegments,b=(buck+i)%segmentSize;
             if(arr[s][b].key==key)
                 return 1;
         }
@@ -197,22 +208,31 @@ int contains(table** arr, int key){
 int main(){
     table** arr=initializeTable();
     char** wordarr=(char**)malloc(sizeof(char*)*datasize);
+    int* keyarr=(int*)malloc(sizeof(int)*datasize);
+    int inputdataset[]={9, 39, 18, 48, 78, 1,2,3,4.5};
     int failedCount=0,resizeCount=0;
-    // int inputdataset[]={9,39,48,78,18,1,3,4,5,6};
     for(int i=0;i<datasize;i++){
         wordarr[i]=generateStr();
-        int in=add(&arr, i, wordarr[i]);
-        if(in==0){
+        keyarr[i]=generateInt();
+        int in=add(&arr, keyarr[i], wordarr[i]);
+        if(in==0){  
             resizeCount++;
             arr=resize(&arr);
-            add(&arr,i,wordarr[i]);
+            add(&arr,keyarr[i],wordarr[i]);
         }
         if(in==-1)
             failedCount++;
         // print(arr);
     }
+    int failedToFetch=0;
+    for(int i=0;i<datasize;i++){
+        if(!contains(arr, keyarr[i]))
+            failedToFetch++;
+    }
     printf("Segment size : %d\nNo of resizes(failed) : %d\n",segmentSize,resizeCount);
     printf("No of failed : %d\n",failedCount);
+    printf("Elements failed to fetch : %d\n",failedToFetch);
+    // printf("Elements failed to add : %d\n",cnt);
     free(wordarr);
     deleteall(arr);
     deleteTable(&arr);
