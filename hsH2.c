@@ -20,7 +20,7 @@ int* loadfactor=NULL;
 int load=0;
 
 typedef struct hashtable{
-    int key;
+    void* key;
     void* val;
     int hop_info;
     int flag;
@@ -45,6 +45,37 @@ void deleteTable(table*** arr){
         free((*arr)[i]);
     }
     free(*arr);
+}
+
+
+int hashfunction1(void* key, int len){
+    unsigned int m = 0x5bd1e995;
+    int r = 24;
+    int seed=123;
+    unsigned int h = seed ^ len;
+    unsigned char * data = (unsigned char *)key;
+    while(len >= 4)
+    {
+        unsigned int k = *(unsigned int*)data;
+        k *= m;
+        k ^= k >> r;
+        k *= m;
+        h *= m;
+        h ^= k;
+        data += 4;
+        len -= 4;
+    }
+    switch(len)
+    {
+        case 3: h ^= data[2] << 16;
+        case 2: h ^= data[1] << 8;
+        case 1: h ^= data[0];
+            h *= m;
+    };
+    h ^= h >> 13;
+    h *= m;
+    h ^= h >> 15;
+    return h;
 }
 
 // returns a hashvalue for the given key
@@ -78,8 +109,8 @@ int generateInt(){
     return (rand()%(upperLimit-lowerLimit))+lowerLimit;
 }
 
-int contains(table** arr, int key){
-    int hash=hashfunction(key);
+int contains(table** arr, void* key){
+    __u_int hash=hashfunction1(key, sizeof(int));
     int seg=hash%noofSegments;
     int buck=hash%segmentSize;
     int hopinfo=arr[seg][buck].hop_info;
@@ -95,13 +126,13 @@ int contains(table** arr, int key){
 }
 
 // adds element to the table
-int add(table ***arr, int key, void *val){
+int add(table ***arr, void* key, void *val){
     if(contains(*arr, key)){
         free(val);
         return -2;
     }
     int total=noofSegments*segmentSize;
-    int hash=hashfunction(key);
+    unsigned int hash=hashfunction1(key, sizeof(int));
     int seg=hash%noofSegments;
     int buck=hash%segmentSize;
     int current_pos=(seg*segmentSize)+buck;
@@ -136,7 +167,7 @@ int add(table ***arr, int key, void *val){
         while(step<H){
             int xindex=(free_index-H+step+total)%total;
             int s=xindex/segmentSize,b=xindex%segmentSize;
-            int xhash=(hashfunction((*arr)[s][b].key));
+            int xhash=(hashfunction1((*arr)[s][b].key, sizeof(int)));
             int xseg=xhash%noofSegments,xbuck=xhash%segmentSize;
             int xcur_pos=(xseg*segmentSize)+xbuck;
             if(free_index<xcur_pos){
@@ -229,11 +260,11 @@ int main(){
     for(int i=0;i<datasize;i++){
         wordarr[i]=generateStr();
         keyarr[i]=generateInt();
-        int in=add(&arr, keyarr[i], wordarr[i]);
+        int in=add(&arr, &keyarr[i], wordarr[i]);
         if(in==0){  
             resizeCount++;
             arr=resize(&arr);
-            add(&arr,keyarr[i],wordarr[i]);
+            add(&arr,&keyarr[i],wordarr[i]);
         }
         if(in==-1)
             failedCount++;
@@ -246,6 +277,7 @@ int main(){
             // }
             present++;
         }
+        // print(arr);
         // print(arr);
     }
     int failedToFetch=0;
@@ -266,30 +298,36 @@ int main(){
     // }
     // gettimeofday(&stop, NULL);
     // printf("took %lu us\n", (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec);
-    for(int i=0;i<100;i++){
-        struct timeval start, end;
-        gettimeofday(&start, NULL);
-        if(contains(arr, generateInt()));
-        gettimeofday(&end, NULL);
-        printf("execution time is : %ld microseconds\n", (end.tv_sec-start.tv_sec)*1000000L+(end.tv_usec-start.tv_usec));
-    }
+    // for(int i=0;i<100;i++){
+    //     struct timeval start, end;
+    //     gettimeofday(&start, NULL);
+    //     if(contains(arr, generateInt()));
+    //     gettimeofday(&end, NULL);
+    //     printf("execution time is : %ld microseconds\n", (end.tv_sec-start.tv_sec)*1000000L+(end.tv_usec-start.tv_usec));
+    // }
 
 
-    int notpresent=0, check=0;
-    for(int i=0;i<100000;i++){
-        int key=generateInt();
-        if(!contains(arr, key)){
-            notpresent++;
-            int flag=0;
-            for(int j=0;j<datasize;j++){
-                if(keyarr[j]==key)
-                    flag=1;
-            }
-            if(flag==0)
-                check++;
-        }
-    }
-    printf("No of elements not present in the array : %d\nNo of elements not present in the tabel : %d\n", check, notpresent);
+    // int notpresent=0, check=0;
+    // for(int i=0;i<100000;i++){
+    //     int key=generateInt();
+    //     if(!contains(arr, key)){
+    //         notpresent++;
+    //         int flag=0;
+    //         for(int j=0;j<datasize;j++){
+    //             if(keyarr[j]==key)
+    //                 flag=1;
+    //         }
+    //         if(flag==0)
+    //             check++;
+    //     }
+    // }
+    // printf("No of elements not present in the array : %d\nNo of elements not present in the tabel : %d\n", check, notpresent);
+
+    // printf("%d\n", hashfunction1("hello", sizeof("hello")));
+    // int a=5;
+    // printf("%d\n", hashfunction1(&a, sizeof(int)));
+    // int b=6;
+    // printf("%d\n", hashfunction1(&b, sizeof(int)));
     free(wordarr);
     free(keyarr);
     deleteall(arr);
