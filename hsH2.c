@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <limits.h>
 #include <sys/time.h>
 #include <math.h>
 
@@ -9,7 +10,7 @@
 #define noofSegments x
 #define segmentSize y
 #define datasize z
-#define upperLimit 10000000
+#define upperLimit 100000000
 #define lowerLimit 1000
 int x=10,y=5000,z=50000;
 int hHsize=0, segsize=0;
@@ -47,41 +48,45 @@ void deleteTable(table*** arr){
     free(*arr);
 }
 
+// returns hash value 
+__uint64_t hashfunction(void* key , int len){
+    const __uint64_t m = 0xc6a4a7935bd1e995;
+    const int r = 47;
+    long long int seed=123;
+    __uint64_t h = seed ^ (len * m);
 
-int hashfunction1(void* key, int len){
-    unsigned int m = 0x5bd1e995;
-    int r = 24;
-    int seed=123;
-    unsigned int h = seed ^ len;
-    unsigned char * data = (unsigned char *)key;
-    while(len >= 4)
+    const __uint64_t * data = (const __uint64_t *)key;
+    const __uint64_t * end = data + (len/8);
+
+    while(data != end)
     {
-        unsigned int k = *(unsigned int*)data;
-        k *= m;
-        k ^= k >> r;
-        k *= m;
-        h *= m;
-        h ^= k;
-        data += 4;
-        len -= 4;
-    }
-    switch(len)
-    {
-        case 3: h ^= data[2] << 16;
-        case 2: h ^= data[1] << 8;
-        case 1: h ^= data[0];
-            h *= m;
-    };
-    h ^= h >> 13;
+    __uint64_t k = *data++;
+
+    k *= m;
+    k ^= k >> r;
+    k *= m;
+
+    h ^= k;
     h *= m;
-    h ^= h >> 15;
-    return h;
-}
+    }
 
-// returns a hashvalue for the given key
-int hashfunction(int key){
-    // return (((key*15)/4)*7)/2;
-    return (13*key+2367)%17401;
+    const unsigned char * data2 = (const unsigned char*)data;
+ 
+    switch(len & 7) {
+        case 7: h ^= (__uint64_t)((__uint64_t)data2[6] << (__uint64_t)48);
+        case 6: h ^= (__uint64_t)((__uint64_t)data2[5] << (__uint64_t)40);
+        case 5: h ^= (__uint64_t)((__uint64_t)data2[4] << (__uint64_t)32);
+        case 4: h ^= (__uint64_t)((__uint64_t)data2[3] << (__uint64_t)24);
+        case 3: h ^= (__uint64_t)((__uint64_t)data2[2] << (__uint64_t)16);
+        case 2: h ^= (__uint64_t)((__uint64_t)data2[1] << (__uint64_t)8 );
+        case 1: h ^= (__uint64_t)((__uint64_t)data2[0]);
+        h *= m;
+    };
+
+    h ^= h >> r;
+    h *= m;
+    h ^= h >> r;
+    return h;
 }
 
 // generates a random string
@@ -110,7 +115,9 @@ int generateInt(){
 }
 
 int contains(table** arr, void* key){
-    __u_int hash=hashfunction1(key, sizeof(int));
+    unsigned long long int hash=hashfunction(key, sizeof(int));
+    // int seg=hash&(noofSegments-1);
+    // int buck=hash&(segmentSize-1);
     int seg=hash%noofSegments;
     int buck=hash%segmentSize;
     int hopinfo=arr[seg][buck].hop_info;
@@ -118,7 +125,7 @@ int contains(table** arr, void* key){
     for(int i=0;i<H;i++,mask<<=1){
         if((hopinfo>>i)&1==1){
             int s=(seg+((buck+i)/segmentSize))%noofSegments,b=(buck+i)%segmentSize;
-            if(arr[s][b].key==key)
+            if(*(int*)arr[s][b].key==*(int*)key)
                 return 1;
         }
     }
@@ -132,7 +139,9 @@ int add(table ***arr, void* key, void *val){
         return -2;
     }
     int total=noofSegments*segmentSize;
-    unsigned int hash=hashfunction1(key, sizeof(int));
+    unsigned long long int hash=hashfunction(key, sizeof(int));
+    // int seg=hash&(noofSegments-1);
+    // int buck=hash&(segmentSize-1);
     int seg=hash%noofSegments;
     int buck=hash%segmentSize;
     int current_pos=(seg*segmentSize)+buck;
@@ -167,8 +176,9 @@ int add(table ***arr, void* key, void *val){
         while(step<H){
             int xindex=(free_index-H+step+total)%total;
             int s=xindex/segmentSize,b=xindex%segmentSize;
-            int xhash=(hashfunction1((*arr)[s][b].key, sizeof(int)));
-            int xseg=xhash%noofSegments,xbuck=xhash%segmentSize;
+            unsigned long long int xhash=(hashfunction((*arr)[s][b].key, sizeof(int)));
+            // int xseg=xhash&(noofSegments-1),xbuck=xhash&(segmentSize-1);
+            int xseg=xhash%noofSegments, xbuck=xhash%segmentSize;
             int xcur_pos=(xseg*segmentSize)+xbuck;
             if(free_index<xcur_pos){
                 free_index+=total;
@@ -198,7 +208,11 @@ int add(table ***arr, void* key, void *val){
             for(int abc=0;abc<H;abc++){
                 if(((hopinfo>>abc)&1)==0){
                     printf("Load factor is : %f%%\n", ((float)load/(float)total)*100);
-                    printf("Load Factor of the segment is : %f%%\n", ((float)loadfactor[seg]/(float)segmentSize)*100);
+                    printf("Load factors of the segment are : \n");
+                    for(int i=0;i<noofSegments;i++){
+                        printf("%f%% ", ((float)loadfactor[i]/(float)segmentSize)*100);
+                    }
+                    printf("\n");
                     hHsize++;
                     return 0;
                 }
@@ -212,8 +226,10 @@ int add(table ***arr, void* key, void *val){
 // resizes by doubling the size of the segment
 table** resize(table*** arr){
     y*=2;
+    load=0;
     table** temp=initializeTable();
     for(int i=0;i<noofSegments;i++){
+        loadfactor[i]=0;
         for(int j=0;j<segmentSize/2;j++){
             if((*arr)[i][j].flag==1)
                 add(&temp, (*arr)[i][j].key, (*arr)[i][j].val);
@@ -230,7 +246,7 @@ void print(table **arr){
     for(int i=0;i<noofSegments;i++){
         for(int j=0;j<segmentSize;j++){
             if(arr[i][j].flag==1)
-                printf("%d:%s  ",arr[i][j].key, (char*)arr[i][j].val);
+                printf("%d:%s  ",*((int*)arr[i][j].key), (char*)arr[i][j].val);
             else    
                 printf(" -:-  ");
         }
@@ -239,6 +255,7 @@ void print(table **arr){
     printf("\n");
 }
 
+//  deletes the entire data
 void deleteall(table** arr){
     for(int i=0;i<noofSegments;i++){
         for(int j=0;j<segmentSize;j++){
@@ -255,7 +272,6 @@ int main(){
     char** wordarr=(char**)malloc(sizeof(char*)*datasize);
     int* keyarr=(int*)malloc(sizeof(int)*datasize);
     loadfactor=(int*)calloc(noofSegments, sizeof(int));
-    // int inputdataset[]={9, 39, 18, 48, 78, 1,2,3,4.5};
     int failedCount=0,resizeCount=0,present=0;
     for(int i=0;i<datasize;i++){
         wordarr[i]=generateStr();
@@ -269,20 +285,12 @@ int main(){
         if(in==-1)
             failedCount++;
         if(in==-2){
-            // for(int j=0;j<=i;j++){
-            //     if(keyarr[i]==keyarr[j]){
-            //         printf("%d %d\n",i, j);
-            //         break;
-            //     }
-            // }
             present++;
         }
-        // print(arr);
-        // print(arr);
     }
     int failedToFetch=0;
     for(int i=0;i<datasize;i++){
-        if(!contains(arr, keyarr[i]))
+        if(!contains(arr, &keyarr[i]))
             failedToFetch++;
     }
     printf("Segment size : %d\nNo of resizes(failed) : %d\n",segmentSize,resizeCount);
@@ -291,13 +299,7 @@ int main(){
     printf("Duplicate elements : %d\n",present);
     printf("No of resizes due to H size overflow : %d\n",hHsize);
     printf("No of resizes due to segment size overflow : %d\n", segsize);
-    // struct timeval stop, start;
-    // gettimeofday(&start, NULL);
-    // for(int i=0;i<1;i++){
-    //     if(contains(arr, generateInt()));
-    // }
-    // gettimeofday(&stop, NULL);
-    // printf("took %lu us\n", (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec);
+   
     // for(int i=0;i<100;i++){
     //     struct timeval start, end;
     //     gettimeofday(&start, NULL);
@@ -323,11 +325,6 @@ int main(){
     // }
     // printf("No of elements not present in the array : %d\nNo of elements not present in the tabel : %d\n", check, notpresent);
 
-    // printf("%d\n", hashfunction1("hello", sizeof("hello")));
-    // int a=5;
-    // printf("%d\n", hashfunction1(&a, sizeof(int)));
-    // int b=6;
-    // printf("%d\n", hashfunction1(&b, sizeof(int)));
     free(wordarr);
     free(keyarr);
     deleteall(arr);
