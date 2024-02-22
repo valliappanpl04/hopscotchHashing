@@ -12,7 +12,7 @@
 #define datasize z
 #define upperLimit 100000000
 #define lowerLimit 1000
-int x=10,y=5000,z=50000;
+int x=10,y=500000,z=5000000;
 int hHsize=0, segsize=0;
 // int x=1,y=10,z=10;
 // int x=3, y=10, z=10;
@@ -203,22 +203,22 @@ int add(table ***arr, void* key, void *val){
             step++;
         }
         if(step==H){
-            printf("%d %d\n", seg, buck);
-            int hopinfo=(*arr)[seg][buck].hop_info;
-            for(int abc=0;abc<H;abc++){
-                if(((hopinfo>>abc)&1)==0){
-                    printf("Load factor is : %f%%\n", ((float)load/(float)total)*100);
-                    printf("Load factors of the segment are : \n");
-                    for(int i=0;i<noofSegments;i++){
-                        printf("%f%% ", ((float)loadfactor[i]/(float)segmentSize)*100);
-                    }
-                    printf("\n");
-                    hHsize++;
-                    return 0;
-                }
-            }
-            return -1;
-            // return 0;
+            // printf("%d %d\n", seg, buck);
+            // int hopinfo=(*arr)[seg][buck].hop_info;
+            // for(int abc=0;abc<H;abc++){
+            //     if(((hopinfo>>abc)&1)==0){
+            //         printf("Load factor is : %f%%\n", ((float)load/(float)total)*100);
+            //         printf("Load factors of the segment are : \n");
+            //         for(int i=0;i<noofSegments;i++){
+            //             printf("%f%% ", ((float)loadfactor[i]/(float)segmentSize)*100);
+            //         }
+            //         printf("\n");
+            //         hHsize++;
+            //         return 0;
+            //     }
+            // }
+            // return -1;
+            return 0;
         }
     }
 }
@@ -273,6 +273,10 @@ int main(){
     int* keyarr=(int*)malloc(sizeof(int)*datasize);
     loadfactor=(int*)calloc(noofSegments, sizeof(int));
     int failedCount=0,resizeCount=0,present=0;
+
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+
     for(int i=0;i<datasize;i++){
         wordarr[i]=generateStr();
         keyarr[i]=generateInt();
@@ -288,11 +292,17 @@ int main(){
             present++;
         }
     }
+
+    gettimeofday(&end, NULL);
+    printf("execution time is : %ld microseconds\n", (end.tv_sec-start.tv_sec)*1000000L+(end.tv_usec-start.tv_usec));
+   
+
     int failedToFetch=0;
     for(int i=0;i<datasize;i++){
         if(!contains(arr, &keyarr[i]))
             failedToFetch++;
     }
+    
     printf("Segment size : %d\nNo of resizes(failed) : %d\n",segmentSize,resizeCount);
     printf("No of failed : %d\n",failedCount);
     printf("Elements failed to fetch : %d\n",failedToFetch);
