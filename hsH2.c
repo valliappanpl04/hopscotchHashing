@@ -12,7 +12,7 @@
 #define datasize z
 #define upperLimit 100000000
 #define lowerLimit 1000
-int x=10,y=500000,z=5000000;
+int x=1,y=524288,z=100000000;
 int hHsize=0, segsize=0;
 // int x=1,y=10,z=10;
 // int x=3, y=10, z=10;
@@ -86,6 +86,8 @@ __uint64_t hashfunction(void* key , int len){
     h ^= h >> r;
     h *= m;
     h ^= h >> r;
+    h*=m;
+    h^=h>>r;
     return h;
 }
 
@@ -116,10 +118,10 @@ int generateInt(){
 
 int contains(table** arr, void* key){
     unsigned long long int hash=hashfunction(key, sizeof(int));
-    // int seg=hash&(noofSegments-1);
-    // int buck=hash&(segmentSize-1);
-    int seg=hash%noofSegments;
-    int buck=hash%segmentSize;
+    int seg=hash&(noofSegments-1);
+    int buck=hash&(segmentSize-1);
+    // int seg=hash%noofSegments;
+    // int buck=hash%segmentSize;
     int hopinfo=arr[seg][buck].hop_info;
     int mask=1;
     for(int i=0;i<H;i++,mask<<=1){
@@ -140,10 +142,10 @@ int add(table ***arr, void* key, void *val){
     }
     int total=noofSegments*segmentSize;
     unsigned long long int hash=hashfunction(key, sizeof(int));
-    // int seg=hash&(noofSegments-1);
-    // int buck=hash&(segmentSize-1);
-    int seg=hash%noofSegments;
-    int buck=hash%segmentSize;
+    int seg=hash&(noofSegments-1);
+    int buck=hash&(segmentSize-1);
+    // int seg=hash%noofSegments;
+    // int buck=hash%segmentSize;
     int current_pos=(seg*segmentSize)+buck;
     int hop=0,i;
     for(i=0;i<total;i++){
@@ -177,8 +179,8 @@ int add(table ***arr, void* key, void *val){
             int xindex=(free_index-H+step+total)%total;
             int s=xindex/segmentSize,b=xindex%segmentSize;
             unsigned long long int xhash=(hashfunction((*arr)[s][b].key, sizeof(int)));
-            // int xseg=xhash&(noofSegments-1),xbuck=xhash&(segmentSize-1);
-            int xseg=xhash%noofSegments, xbuck=xhash%segmentSize;
+            int xseg=xhash&(noofSegments-1),xbuck=xhash&(segmentSize-1);
+            // int xseg=xhash%noofSegments, xbuck=xhash%segmentSize;
             int xcur_pos=(xseg*segmentSize)+xbuck;
             if(free_index<xcur_pos){
                 free_index+=total;
@@ -204,6 +206,11 @@ int add(table ***arr, void* key, void *val){
         }
         if(step==H){
             printf("Load factor is : %f%%\n", ((float)load/(float)total)*100);
+            printf("Load factor of the segments are : \n");
+            for(int i=0;i<noofSegments;i++){
+                printf("segment number %d : %f%% \n",i,  ((float)loadfactor[i]/(float)segmentSize)*100);
+            }
+            hHsize++;
             return 0;
         }
     }
@@ -288,14 +295,14 @@ int main(){
         if(!contains(arr, &keyarr[i]))
             failedToFetch++;
     }
-    
+    int total=noofSegments*segmentSize;
     printf("Segment size : %d\nNo of resizes(failed) : %d\n",segmentSize,resizeCount);
     printf("No of failed : %d\n",failedCount);
     printf("Elements failed to fetch : %d\n",failedToFetch);
     printf("Duplicate elements : %d\n",present);
     printf("No of resizes due to H size overflow : %d\n",hHsize);
     printf("No of resizes due to segment size overflow : %d\n", segsize);
-   
+    printf("Load factor after adding all the elements is : %f%%\n",((float)load/(float)total)*100);
     // for(int i=0;i<100;i++){
     //     struct timeval start, end;
     //     gettimeofday(&start, NULL);

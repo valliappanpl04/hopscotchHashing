@@ -9,7 +9,8 @@
 #define upperLimit 100000000
 #define lowerLimit 1000
 // int x=5000000, y=5000000;
-int x=5000000, y=5000000;
+int x=5000000, y=100000000;
+int load=0;
 
 typedef struct hashtable{
     void *val;
@@ -133,6 +134,7 @@ int add(table **arr, void *key, void* val){
             int h=(*arr)[hashval].hopinfo;
             (*arr)[hashval].hopinfo|=(1<<(index-hashval));
             h=(*arr)[hashval].hopinfo;
+            load++;
             return 1;
         }
         int step=1,in=index;    
@@ -162,6 +164,7 @@ int add(table **arr, void *key, void* val){
         }
         if(step==H){
             // tell element can't be inserted and needs resize
+            printf("load factor is : %f%%\n", ((float)load/(float)tablesize)*100);
             return 0;
         }
     }
@@ -169,6 +172,7 @@ int add(table **arr, void *key, void* val){
 
 table* resize(table** arr){
     x*=2;
+    load=0;
     table* temp=initializeTable();
     for(int i=0;i<tablesize/2;i++){
         if((*arr)[i].flag==1){
