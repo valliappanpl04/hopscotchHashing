@@ -203,21 +203,7 @@ int add(table ***arr, void* key, void *val){
             step++;
         }
         if(step==H){
-            // printf("%d %d\n", seg, buck);
-            // int hopinfo=(*arr)[seg][buck].hop_info;
-            // for(int abc=0;abc<H;abc++){
-            //     if(((hopinfo>>abc)&1)==0){
-            //         printf("Load factor is : %f%%\n", ((float)load/(float)total)*100);
-            //         printf("Load factors of the segment are : \n");
-            //         for(int i=0;i<noofSegments;i++){
-            //             printf("%f%% ", ((float)loadfactor[i]/(float)segmentSize)*100);
-            //         }
-            //         printf("\n");
-            //         hHsize++;
-            //         return 0;
-            //     }
-            // }
-            // return -1;
+            printf("Load factor is : %f%%\n", ((float)load/(float)total)*100);
             return 0;
         }
     }
